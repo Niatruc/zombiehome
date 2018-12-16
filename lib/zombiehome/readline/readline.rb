@@ -9,33 +9,83 @@ module Zombiehome::Readline
 	self.completion_proc = Completer::CompletionProc
 
 	class << self
+		@help_info = %Q{
+			quit(q): Exit from this program
+			help(h): Print these message
+			connect(conn, c): Connect to a database(using configure items specified by user)
+			cd <exp>: Turn into another context. For example, `cd db.tables.my_table`, then you could manage the table db.tables.my_table.
+				If no exp is given, then it will return to the top level context (which is the same as that context you are first in after lauching this program).
+		}
+
+		@commands = %w{
+			quit
+			help
+			connect
+		}
+
 		def start(tip)
-			context = binding
+			appended_tip = ""
+			top_context = binding
+			context = top_context
 			Completer.instance_variable_set(:@context, context)
+			context_queue = Completer.instance_variable_set(:@context_queue, [])
+			context_queue << context
 			Completer.instance_variable_set(:@dbs, [])
+			Completer.instance_variable_set(:@commands, @commands)
 
 			text = ""
 
 			while true 
-				text = readline(tip, true)
+				text = readline("#{tip} #{appended_tip}> ", true)
 
 				begin
 					case text
 					when "quit", "q"
 						break
+					when "help", "h"
+						puts (self.singleton_class.class_eval { @help_info })
 					when "connect", "conn", 'c'
 						context.eval(%Q{
 							db = Zombiehome::DBFactory.create
 						})
 						Completer.instance_variable_get(:@dbs) << 'db'
+					when /^cd[\s]+(.+)/
+						r = top_context.eval($1)
+						begin
+							r_class = r.class
+							if r_class <= Zombiehome::DBFactory || r_class <= Zombiehome::DBFactory::Table
+								context = top_context.eval(%Q{
+									#{$1}.instance_eval{ binding }
+								})
+							end
+						rescue Exception => e
+							if r.is_zbh_tables!
+								# context = r.binding!
+								context = top_context.eval(%Q{
+									#{$1}.instance_eval!{ ::Kernel.binding }
+								})
+							end
+						end
+						Completer.instance_variable_set(:@context, context)
+						appended_tip = " #{$1}"
+						
+					when /^cd[\s]*$/
+						context = top_context
+						Completer.instance_variable_set(:@context, context)
+						appended_tip = ""
 					else
-						puts context.eval(text)
+						r = context.eval(text)
+						puts r
 					end
 				rescue Exception => e
 					puts e.message
 					e.backtrace.each {|b| puts b}
 				end
 			end
+		end
+
+		def methods
+			self.singleton_class.class_eval { @commands }
 		end
 	end
 end

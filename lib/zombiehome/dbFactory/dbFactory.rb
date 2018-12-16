@@ -25,24 +25,32 @@ module Zombiehome
 				end
 				db = eval(%Q{#{DBType2DBFactoryName[db_type]}.new})
 
+				url = config[:url] || CONFIG["url"]
+				user = config[:user] || CONFIG["user"]
+				password = config[:password] || CONFIG["password"]
+				schema = config[:driver] || CONFIG["schema"]
+
 				db.connect(
-					config[:url] || CONFIG["url"],
-					config[:user] || CONFIG["user"],
-					config[:password] || CONFIG["password"],
+					url,
+					user,
+					password,
 					*[{"driver" => (driver_class_str if driver_class_str)}]
 				)
 
 				db.instance_eval do
-					@schema = CONFIG["schema"]
+					@schema = schema
+					@url = url
+					@user = user
+					@password = password
 					@tables_views_list = @dbh.tables
 
 					@table_pool = {}
-					def @table_pool.to_s
-						"table_pool"
-					end
-					def @table_pool.inspect
-						"table_pool"
-					end
+					# def @table_pool.to_s
+					# 	"table_pool"
+					# end
+					# def @table_pool.inspect
+					# 	"table_pool"
+					# end
 
 					init_tables
 				end
@@ -63,6 +71,14 @@ module Zombiehome
 			}
 		end
 
+		def to_s
+			%Q{
+				schema: #{@schema}
+				url: #{@url}
+				user: #{@user}
+				password: #{@password}
+			}
+		end
 
 		private
 
@@ -77,6 +93,12 @@ module Zombiehome
 				def tables_list!
 					@db.tables_views_list
 				end
+
+				def binding!
+					::Kernel.binding
+				end
+
+				alias :instance_eval! :instance_exec
 
 				def method_missing(table_name, *args, &blk)
 					# When retreving a table, the code below would be executed
