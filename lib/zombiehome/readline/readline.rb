@@ -50,24 +50,29 @@ module Zombiehome::Readline
 						})
 						Completer.instance_variable_get(:@dbs) << 'db'
 					when /^cd[\s]+(.+)/
-						r = top_context.eval($1)
+						path = $1
+						r = context.eval(path)
 						begin
 							r_class = r.class
 							if r_class <= Zombiehome::DBFactory || r_class <= Zombiehome::DBFactory::Table
-								context = top_context.eval(%Q{
-									#{$1}.instance_eval{ binding }
+								context = context.eval(%Q{
+									#{path}.instance_eval{ binding }
 								})
 							end
 						rescue Exception => e
 							if r.is_zbh_tables!
 								# context = r.binding!
-								context = top_context.eval(%Q{
-									#{$1}.instance_eval!{ ::Kernel.binding }
+								context = context.eval(%Q{
+									#{path}.instance_eval!{ ::Kernel.binding }
 								})
 							end
 						end
 						Completer.instance_variable_set(:@context, context)
-						appended_tip = " #{$1}"
+						if /^[\s]*(?<pre_path>[.a-zA-Z0-9_]+)/ =~ appended_tip
+							appended_tip = " #{pre_path}.#{path}"
+						else
+							appended_tip = " #{path}"
+						end
 						
 					when /^cd[\s]*$/
 						context = top_context
@@ -85,7 +90,7 @@ module Zombiehome::Readline
 		end
 
 		def methods
-			self.singleton_class.class_eval { @commands }
+			(self.singleton_class.class_eval { @commands }) + Completer.instance_variable_get(:@dbs)
 		end
 	end
 end

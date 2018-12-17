@@ -11,13 +11,13 @@ module Zombiehome
 					# variable's name or method's name
 
 			        # gv = @context.eval("global_variables").collect{|m| m.to_s}
-			        lv = @context.eval("::Kernel.local_variables").collect{|m| m.to_s}
 			        # iv = @context.eval("instance_variables").collect{|m| m.to_s}
 			        # cv = @context.eval("self.class.constants").collect{|m| m.to_s}
+			        lv = @context.eval("::Kernel.local_variables").collect{|m| m.to_s}
 
 			        candidates = search_candidates_under_context(@context, "self")
 		        	# @dbs.grep(/^#{input}/)
-		        	(candidates + @dbs).grep(/^#{input}/)
+		        	(candidates).grep(/^#{input}/)
 			    when /^([^."].*)(\.|::)([^.]*)$/
 			    	receiver = $1
 			        sep = $2
