@@ -131,7 +131,19 @@ lht.users.update({gender: 0}, set: {description: 'He is a boy!'})
 lht.users.delete({gender: 0})
 ```
 ### In command line
-Some command line completion functions have been implemented so that when you turn into command line, you can click TAB button to complete commands or names:
+Some command line completion functions have been implemented so that when you turn into command line, you can click TAB button to complete commands or names。
+
+For instance, you have a Mysql database instance, where you have some tables as follow:  
+![image](https://github.com/Niatruc/zombiehome/blob/master/pic/tables.jpg)
+
+After executing `connnect` (or `c` for short) command to connect to your database, you can click `Tab` button to complete your datatbase 's or tables' or other variables' or methods' names. As in the follow gif, I use `Tab` button to quickly refer to `users` table and query its records.
+![image](https://github.com/Niatruc/zombiehome/blob/master/pic/completion1.gif)
+
+You can use `cd` command to change the conversation's context. As follow shows, after turning into `db.tables.users` table's context, when typing `select` and enter, it will fetch records from `db.tables.users` table. And if you just type `cd` and enter, it will return to the top level context (which is the same as that context you are first in after lauching this program).
+![image](https://github.com/Niatruc/zombiehome/blob/master/pic/completion2.gif)
+
+Using conditions when query records will be like this:  
+![image](https://github.com/Niatruc/zombiehome/blob/master/pic/condition1.gif)
 
 ## Development
 
