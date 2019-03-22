@@ -48,6 +48,9 @@ module Zombiehome
 							from
 								#{@table_name}
 						}
+						@basic_delete_sql = %Q{
+							delete from #{@table_name}
+						}
 
 						@row_format = :hash
 
@@ -59,7 +62,7 @@ module Zombiehome
 
 			end
 
-			attr_accessor :row_format
+			attr_accessor :row_format, :inst_struct
 
 			# Display the table's structure.
 			def to_s
@@ -77,12 +80,21 @@ module Zombiehome
 				
 			end
 
+			def new_record
+				r = inst_struct.new
+				r.define_singleton_method(:methods) do
+					members
+				end
+				r
+			end
+
 			def methods
 				%i{
 					select
 					insert
 					update
 					delete
+					new_record
 				}
 			end
 
@@ -93,54 +105,173 @@ module Zombiehome
 				# The primitive sql string that is to be executed.
 				select_sql = @basic_select_sql.clone
 
-				# This variable is used to store all arguments that are to be passed to the sql string.
-				prepared_args_for_sql = []
-
-				# If no argument is given, then select all records from the table
+				# If no argument is given, then select all records from the table.
 				if !args[0]
 					rs = @db.select(select_sql, [])
 				else
-					appendix = ""
-					if !(args[0].class <= Integer)
-						select_sql += " WHERE "
-						appendix = " 1 = 0 "
-					end
-
-					while !args.empty?
-						arg = args.first
-						if arg.class <= Integer
-							# The limit numbers are expected to be the last arugments.
-							break
-
-						elsif arg.class <= Array
-							condition_sql, args_for_sql = analyze_array_type_arg(arg)
-							prepared_args_for_sql.concat(args_for_sql)
-
-						elsif arg.class <= Hash
-							condition_sql, args_for_sql = analyze_hash_type_arg(arg)
-							prepared_args_for_sql.concat(args_for_sql)
-						end
-
-						select_sql += " #{condition_sql} OR "
-
-						args.shift
-					end
-
-					select_sql += appendix
-					rs = @db.select(select_sql, prepared_args_for_sql, *args)
+					condition_sql, prepared_args_for_sql = create_condition_sql_stmt(args)
+					rs = @db.select(select_sql + condition_sql, prepared_args_for_sql, *args)
 				end
 
 				# Transform the result.
 				rs_format = transform_result(rs)
 			end
 
+			def insert(records)
+				col_name_arr = []
+				col_val_arr = []
+				records_class = records.class
+
+				if records_class <= Array
+					records.each do |r|
+						insert(r)
+					end
+				elsif records_class <= Hash or records_class <= Struct
+					@columns.each do |col_info|
+						col_name = col_info.column_name
+						col_name_arr << col_name
+						col_val_arr << records[col_name]
+					end
+
+					insert_sql = %Q{
+						insert into
+							#{@table_name}(#{col_name_arr.join(',')})
+						values
+							(#{ ('?' * col_val_arr.length).split('').join(',') })
+					}
+
+					@db.exec_stmt(insert_sql, *col_val_arr)
+				end
+			end
+
+			def update(*args)
+				col_name_arr = []
+				val_arr = []
+
+				if args[0].class <= Array
+					args[0].each do |r|
+						update(r)
+					end
+				elsif args[0].class <= Hash 
+					if args.last.class == Hash and args.last[:set]
+						update_info = args.pop[:set]
+						sql_stmt_args = update_info.values
+						condition_sql, prepared_args_for_sql = create_condition_sql_stmt(args)
+						sql_stmt_args.concat(prepared_args_for_sql)
+						update_sql = %Q{
+							update #{@table_name} set
+								#{update_info.keys.join('=?, ')}=?
+							#{condition_sql}
+						}
+
+						@db.exec_stmt(update_sql, *sql_stmt_args)
+					end
+				elsif args[0].class <= Struct # Update one record
+					record = args[0]
+
+					# Only if the table have a primary key can the followed codes be executed.
+					if !@primary_key_name_list.empty?
+						@columns.each do |col_info|
+							col_name = col_info.column_name
+							col_name_arr << col_name
+							val_arr << record[col_name]
+						end
+
+						pri_col_name_arr = []
+						@primary_key_name_list.each do |col_name|
+							pri_col_name_arr << col_name
+							val_arr << record[col_name]
+						end
+
+						update_sql = %Q{
+							update #{@table_name} set
+								#{col_name_arr.join('=?, ')}=?
+							where
+								#{pri_col_name_arr.join('=? and ')}=?
+						}
+
+						@db.exec_stmt(update_sql, *val_arr)
+					end
+				end
+			end
+
+			def delete(*args)
+				if args.empty?
+					rs = @db.exec_stmt(@basic_delete_sql)
+				elsif args[0].class <= Array
+					args[0].each do |r|
+						delete(r)
+					end
+				elsif args[0].class <= Struct
+					record = args[0]
+
+					# Only if the table have a primary key can the followed codes be executed.
+					if !@primary_key_name_list.empty?
+						val_arr = []
+						pri_col_name_arr = []
+
+						@primary_key_name_list.each do |col_name|
+							pri_col_name_arr << col_name
+							val_arr << record[col_name]
+						end
+
+						delete_sql = %Q{
+							delete from 
+								#{@table_name}
+							where
+								#{pri_col_name_arr.join('=? and ')}=?
+						}
+
+						@db.exec_stmt(delete_sql, *val_arr)
+					end
+				else
+					condition_sql, prepared_args_for_sql = create_condition_sql_stmt(args)
+					rs = @db.exec_stmt(@basic_delete_sql + condition_sql, *prepared_args_for_sql)
+				end
+			end
+
+			def create_condition_sql_stmt(args)
+				sql_stmt = ""
+				prepared_args_for_sql = [] # This variable is used to store all arguments that are to be passed to the sql string.
+
+				appendix = ""
+				if !(args[0].class <= Integer) # Imply that there are some conditions in the statement.
+					sql_stmt += " where "
+					appendix = " 1 = 0 "
+				end
+
+				while !args.empty?
+					arg = args.first
+					if arg.class <= Integer
+						# The limit numbers are expected to be the last arugments.
+						break
+
+					elsif arg.class <= Array
+						condition_sql, args_for_sql = analyze_array_type_arg(arg)
+						prepared_args_for_sql.concat(args_for_sql)
+
+					elsif arg.class <= Hash
+						condition_sql, args_for_sql = analyze_hash_type_arg(arg)
+						prepared_args_for_sql.concat(args_for_sql)
+					end
+
+					sql_stmt += " #{condition_sql} or "
+
+					args.shift
+				end
+
+				sql_stmt += appendix
+
+				[sql_stmt, prepared_args_for_sql]
+			end
+
 			def transform_result(rs)
 				rs_format = []
 
 				case @row_format
-				when :hash
+				when :hash, :bean
 					rs.each do |r|
-						h = {}
+						h = (@row_format == :hash ? {} : new_record)
 						@columns.each do |c|
 							h[c.column_name] = r[c.column_name]
 						end
@@ -169,6 +300,7 @@ module Zombiehome
 							in_val_str += %Q{(#{("?," * a.length).chop}),}
 							args_for_sql.concat(a)
 							
+						# If the table have a single primary key:
 						else
 							in_val_str += "?,"
 							args_for_sql << a
@@ -230,6 +362,7 @@ module Zombiehome
 			def quote_col_name(col_name)
 				col_name.to_s
 			end
+
 		end
 	end
 end

@@ -6,6 +6,7 @@ module Zombiehome
 			def refresh_columns_info
 				@columns = []
 				@primary_key_name_list = []
+				column_name_symbols = []
 
 				@db.select_and_handle(%Q{
 					SELECT
@@ -22,6 +23,8 @@ module Zombiehome
 
 					end
 					@columns << col
+
+					column_name_symbols << col.column_name.to_sym
 				end
 
 				# Record the primary key of the table.
@@ -31,7 +34,15 @@ module Zombiehome
 					end
 				end
 
-				# p @primary_key_name_list
+				# Create a Struct instance that is used to create a new record object
+				@inst_struct = Struct.new(*column_name_symbols)
+				@inst_struct.class_eval do
+					def <<(h)
+						h.each_entry do |k, v|
+							self[k.to_sym] = v if self.members.include?(k.to_sym)
+						end
+					end
+				end
 			end
 		end
 	end

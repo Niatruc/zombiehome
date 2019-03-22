@@ -73,7 +73,8 @@ An example for reading records:
 users_list = lht.users.select(1, 10)
 
 # Select one row by primary key. If a table have a composite primary key, put the pk value into an array in the order of how they are written when creating the table, and then pass the array to the follow method.
-me = lht.users.select(['00001'])
+me = lht.users.select(['00001', '00002'])  # table has a single primary key
+me = lht.users.select([[1, '0'], [2, '0']])  # table has a composite primary key
 
 # select 
 # 	* 
@@ -84,11 +85,13 @@ me = lht.users.select(['00001'])
 # 	and last_name in ('zhao', 'qian', 'sun', 'li')
 # 	and birthday between '1990-01-01' and '2018-12-31'
 # 	and address is not null
+# 	first_name is like 'han%'
 users = lht.users.select({
 	gender: '0', 
 	last_name: ['zhao', 'qian', 'sun', 'li'],
 	birthday: '1990-01-01'..'2018-12-31',
 	0 => "address is not null",
+	1 => ["first_name is like ?", ["han%"]],
 })
 
 # If should add a `or` clause, then separate the criteria into two Hash instances
@@ -136,7 +139,7 @@ Some command line completion functions have been implemented so that when you tu
 For instance, you have a Mysql database instance, where you have some tables as follow:  
 ![image](https://github.com/Niatruc/zombiehome/blob/master/pic/tables.jpg)
 
-After executing `connnect` (or `c` for short) command to connect to your database, you can click `Tab` button to complete your datatbase 's or tables' or other variables' or methods' names. As in the follow gif, I use `Tab` button to quickly refer to `users` table and query its records.
+After executing `connnect` (or `c` for short) command to connect to your database, you can click `Tab` button to complete your datatbase's or tables' or other variables' or methods' names. As in the follow gif, I use `Tab` button to quickly refer to `users` table and query its records.
 ![image](https://github.com/Niatruc/zombiehome/blob/master/pic/completion1.gif)
 
 You can use `cd` command to change the conversation's context. As follow shows, after turning into `db.tables.users` table's context, when typing `select` and enter, it will fetch records from `db.tables.users` table. And if you just type `cd` and enter, it will return to the top level context (which is the same as that context you are first in after lauching this program).

@@ -12,6 +12,12 @@ module Zombiehome::DbiWrapper
 	# args should be Array type
 	def select(sql_stmt, args)
 		# puts sql_stmt, args
+		if $debug
+			puts %Q{
+				SQL statement to be executed: #{sql_stmt}
+				Arguments for this statement: #{args}
+			}
+		end
 		rs = @dbh.select_all(sql_stmt, *args)
 	end	
 
@@ -32,20 +38,28 @@ module Zombiehome::DbiWrapper
 	end
 
 	def exec_stmt(sql, *args)
+		# @dbh['AutoCommit'] = false
 		begin
+			if $debug
+				puts %Q{
+					SQL statement to be executed: #{sql}
+					Arguments for this statement: #{args}
+				}
+			end
+
 			sth = @dbh.prepare(sql)
-			sth.execute(args)
+			sth.execute(*args)
 			sth.finish
-			@dbh.commit
-			puts "Record has been created"
-			yield() if 1
+			# @dbh.commit
 		rescue DBI::DatabaseError => e
 		    puts "An error occurred"
 		    puts "Error code:    #{e.err}"
 		    puts "Error message: #{e.errstr}"
+		    puts e.backtrace
 		    @dbh.rollback
 		ensure
 
 		end
+		# @dbh['AutoCommit'] = true
 	end
 end

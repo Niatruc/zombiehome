@@ -51,17 +51,17 @@ module Zombiehome::Readline
 						Completer.instance_variable_get(:@dbs) << 'db'
 					when /^cd[\s]+(.+)/
 						path = $1
-						r = context.eval(path)
+						__r = context.eval(path)
 						begin
-							r_class = r.class
+							r_class = __r.class
 							if r_class <= Zombiehome::DBFactory || r_class <= Zombiehome::DBFactory::Table
 								context = context.eval(%Q{
 									#{path}.instance_eval{ binding }
 								})
 							end
 						rescue Exception => e
-							if r.is_zbh_tables!
-								# context = r.binding!
+							if __r.is_zbh_tables!
+								# context = __r.binding!
 								context = context.eval(%Q{
 									#{path}.instance_eval!{ ::Kernel.binding }
 								})
@@ -79,8 +79,8 @@ module Zombiehome::Readline
 						Completer.instance_variable_set(:@context, context)
 						appended_tip = ""
 					else
-						r = context.eval(text)
-						puts r
+						__r = context.eval(text)
+						puts __r
 					end
 				rescue Exception => e
 					puts e.message
