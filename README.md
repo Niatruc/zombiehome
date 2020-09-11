@@ -1,8 +1,6 @@
 # Zombiehome
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/zombiehome`. To experiment with that code, run `bin/console` for an interactive prompt.
-
-TODO: Delete this and the text above, and describe your gem
+Thanks for giving an attention to this project. This project can be seen as a DSL for conveniently manipulating data in database in different types (Oracle, MySql, Hbase, etc.). You can use expression in Ruby syntax rather than SQL to accomplish daily database work such as CURD. 
 
 ## Installation
 
