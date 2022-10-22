@@ -1,31 +1,28 @@
 # Zombiehome
 
-Thanks for giving an attention to this project. This project can be seen as a DSL for conveniently manipulating data in database in different types (Oracle, MySql, Hbase, etc.). You can use expression in Ruby syntax rather than SQL to accomplish daily database work such as CURD. 
+Thanks for giving an attention to this project. This project is a DSL for conveniently manipulating data in database in different types (Oracle, MySql, Hbase, etc.). You can use expression in Ruby syntax rather than SQL to accomplish daily database work such as CURD. 
 
 ## Installation
+* Way 1
+1. Add the below line to your application's Gemfile:
+	```ruby
+	gem 'zombiehome'
+	```
+2. Execute `bundle`. 
 
-Add this line to your application's Gemfile:
+* Way 2
+    > $ gem install zombiehome
 
-```ruby
-gem 'zombiehome'
-```
-
-And then execute:
-
-    $ bundle
-
-Or install it yourself as:
-
-    $ gem install zombiehome
-
-## Setup
-Modify the file `./conf/required_files` which will be loaded when `zombiehome` is loaded. Write codes that will load neccessary libraries here. Note that `zombiehome` is based on `DBI` library. For example, when you are on JRuby Platform and you want to manage a Mysql instance, then in this file you should add a line that will load your Mysql JDBC jar file:
+## Usage
+### Configure
+* Modify file `./conf/required_files` which will be loaded when `zombiehome` is loaded. This file allow `zombiehome` to load necessary libraries. For example, if you use `zombiehome` on JRuby Platform and you want to manage a Mysql instance, then the below line is necessary for loading a Mysql JDBC jar:
 ```ruby
 require '/home/u/mysql_jar/mysql-connector-java-5.1.43-bin.jar'
 ```
 
-To connect to your database, you should write some configure items in a yml file seems like the follow:
+* To connect to your database, you should write some configure items in a yml file seems, for example:
 ```yml
+# my_config.yml
 type: "mysql"
 url: "DBI:Jdbc:mysql://192.168.1.100/mydb?useSSL=false"
 user: "root"
@@ -33,16 +30,15 @@ password: "toor"
 schema: "mydb"
 driver: "com.mysql.jdbc.Driver"
 ```
-Then specify your file name in `./conf/config.yml` file:
+* Specify your file name in `./conf/config.yml` file:
 ```yml
-user_config_file_path: "/home/u/conf/user config.yml"
+user_config_file_path: "/home/u/conf/my_config.yml"
 ```
 
-Or else you could parse those configure items to `Zombiehome::DBFactory.create` method to create an functional instance.
+* Besides, you can parse those configure items to `Zombiehome::DBFactory.create` method to create an functional instance.
 
-## Usage
-### In Codes
-Step 1, create a new `Zombiehome::ServerFactory` instance:
+### Programming
+* Create a new `Zombiehome::ServerFactory` instance:
 ```ruby
 lh = Zombiehome::MysqlDBFactory.create({
 	type: 'mysql',
@@ -53,7 +49,7 @@ lh = Zombiehome::MysqlDBFactory.create({
 lht = lh.tables
 ```
 
-Step 2, perform CRUD actions. Suggest I have a mysql schema named as 'mySchema' and where there is a table called 'users', which is defined as follow:
+* Perform CRUD actions. Suggest you have a mysql schema named as 'mySchema' and a 'users' table defined as below:
 ```sql
 create table users (
 	id varchar(30) primary key,
@@ -65,15 +61,17 @@ create table users (
 	description varchar(10)
 )
 ```
-An example for reading records:
+
+Reading records:
 ```ruby
-# Select records from the table 'users', from the 1st to the 11th.
+# Select records from 'users' table, from the 1st to the 11th.
 users_list = lht.users.select(1, 10)
 
-# Select one row by primary key. If a table have a composite primary key, put the pk value into an array in the order of how they are written when creating the table, and then pass the array to the follow method.
-me = lht.users.select(['00001', '00002'])  # table has a single primary key
-me = lht.users.select([[1, '0'], [2, '0']])  # table has a composite primary key
+# Select one row by primary key. If a table have a composite primary key, put the pk value into an array in the order of how they are written when creating the table, and then pass the array to the `select` method.
+me = lht.users.select(['00001', '00002'])  # if table has a single primary key
+me = lht.users.select([[1, '0'], [2, '0']])  # if table has a composite primary key
 
+# Use complicate conditions. 
 # select 
 # 	* 
 # from 
@@ -92,7 +90,7 @@ users = lht.users.select({
 	1 => ["first_name is like ?", ["han%"]],
 })
 
-# If should add a `or` clause, then separate the criteria into two Hash instances
+# If you need a `or` condition, then separate the criteria into two Hash instances
 users = lht.users.select({
 	birthday: '1990-01-01'..'2018-12-31',
 }, {
@@ -110,7 +108,7 @@ users.each do |user|
 end
 ```
 
-As for insert/update/delete work:
+* Insert/Update/Delete:
 ```ruby
 lht.users.insert(user)
 lht.users.insert([user1, user2]) # insert a batch of records
@@ -123,7 +121,7 @@ lht.users.delete(user.id) # delete record by primary key
 lht.users.delete([user1, user2]) # delete a batch of records
 ```
 
-Conditions can be used while doing update/delete work:
+* Using conditions while doing update/delete work:
 ```ruby
 # update users set description = 'He is a boy!' where gender = 0
 lht.users.update({gender: 0}, set: {description: 'He is a boy!'})
@@ -131,7 +129,8 @@ lht.users.update({gender: 0}, set: {description: 'He is a boy!'})
 # delete from users where gender = 0
 lht.users.delete({gender: 0})
 ```
-### In command line
+
+### Command Line
 Some command line completion functions have been implemented so that when you turn into command line, you can click TAB button to complete commands or names。
 
 For instance, you have a Mysql database instance, where you have some tables as follow:  
